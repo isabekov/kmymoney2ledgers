@@ -6,6 +6,7 @@
 import xml.etree.ElementTree as ET
 import sys
 import getopt
+import string
 
 # Account types are defined in:
 # Repo: https://invent.kde.org/office/kmymoney
@@ -36,10 +37,12 @@ CurrencyDict = {'EUR': '€', 'TRL': '₺', 'USD': '$', 'CZK': 'Kč', 'HRK': 'kn
 money_accounts = [AccountTypes[k] for k in ['Checkings', 'Savings', 'Cash', 'CreditCard', 'Asset', 'Liability', 'Equity']]
 categories = [AccountTypes[k] for k in ['Income', 'Expense']]
 
+AccountRenaming = {"Asset": "Assets", "Liability": "Liabilities", "Expense": "Expenses"}
 
 def print_help():
-    print("python3 {} -i <inputfile> [-o <outputfile>]\n".format(sys.argv[0]))
+    print("python3 {} [-o <outputfile>] <inputfile>\n".format(sys.argv[0]))
     print('Input flags:\n\
+    -b --beancount                                       use beancount output format (otherwise default is hledger)\n\
     -r --replace-destination-account-commodity           replace destination account commodity (currency) with source\n\
                                                          account commodity. No currency convesion is performed.\n\
     -s --use-currency-symbols                            replace some of the currency codes specified in ISO 4217 with\n\
@@ -48,58 +51,52 @@ def print_help():
     return
 
 
-def traverse_account_hierarchy(accounts, acnt_id):
-    if accounts[acnt_id]['parentaccount'] == "":
-        return accounts[acnt_id]['name']
+def remove_spec_chars(text):
+    table = str.maketrans(dict.fromkeys(string.punctuation + " ", "-"))
+    ntxt = text.translate(table)
+    if ntxt[0] == "-":
+        return ntxt[1:]
     else:
-        parent_acnt_name = traverse_account_hierarchy(accounts, accounts[acnt_id]['parentaccount'])
-    return "{}:{}".format(parent_acnt_name, accounts[acnt_id]['name'])
+        return ntxt
 
 
-def main(argv):
-    try:
-        opts, args = getopt.getopt(argv[1:], "hrso:",
-                                   ["help", "replace-destination-account-commodity", "use-currency-symbols", "output="])
-    except getopt.GetoptError:
-        print_help()
-        sys.exit(2)
+def traverse_account_hierarchy(accounts, acnt_id, to_use_beancount):
+    if accounts[acnt_id]['parentaccount'] == "":
+        acnt_name = accounts[acnt_id]['name']
+        if acnt_name in AccountRenaming.keys():
+            acnt_name = AccountRenaming[acnt_name]
+        return acnt_name
+    else:
+        parent_acnt_name = traverse_account_hierarchy(accounts, accounts[acnt_id]['parentaccount'], to_use_beancount)
+    if to_use_beancount == True:
+        acnt_name = remove_spec_chars(accounts[acnt_id]['name'])
+    else:
+        acnt_name = accounts[acnt_id]['name']
+    return "{}:{}".format(parent_acnt_name, acnt_name)
 
-    # Default flags
-    to_keep_destination_account_commodity = True
-    to_use_currency_symbols = False
 
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print_help()
-            sys.exit()
-        elif opt in ("-r", "--replace-destination-account-commodity"):
-            to_keep_destination_account_commodity = False
-        elif opt in ("-s", "--use-currency-symbols"):
-            to_use_currency_symbols = True
-        elif opt in ("-o", "--output"):
-            outputfile = arg
+def print_account_info(accounts, to_use_beancount):
+    account_lines = ''
+    for k in accounts.keys():
+        if not (accounts[k]['name'] in list(AccountRenaming.keys()) + ["Equity", "Income"]):
+            opening_date = accounts[k]["opened"]
+            if opening_date == "":
+                opening_date = "1900-01-01"
+            if to_use_beancount == False:
+                opening_date = opening_date.replace('-', '/')
+            acnt_full_name = traverse_account_hierarchy(accounts, k, to_use_beancount)
+            account_lines += "{} open {} \n".format(opening_date, acnt_full_name)
+    return account_lines
 
-    if len(args) == 1:
-        inputfile = args[0]
 
-    if not ("outputfile" in vars()):
-        outputfile = "{}.journal".format(inputfile)
+def print_operating_currency(root):
+    base_currency = root.findall("./KEYVALUEPAIRS/PAIR/[@key='kmm-baseCurrency']")[0].attrib['value']
+    return "option \"operating_currency\" \"{}\"\n".format(base_currency)
 
-    parser = ET.XMLParser(encoding="utf-8")
-    tree = ET.parse(inputfile, parser=parser)
-    root = tree.getroot()
 
-    accounts = dict()
-    for k in list(root.findall("./ACCOUNTS")[0]):
-        accounts[k.attrib['id']] = k.attrib
-
-    payees = dict()
-    for k in list(root.findall("./PAYEES")[0]):
-        payees[k.attrib['id']] = k.attrib
-
+def print_transactions(transactions, payees, accounts, to_keep_destination_account_commodity, to_use_beancount, to_use_currency_symbols):
     # Process all transactions
     all_lines = ""
-    transactions = list(root.findall('./TRANSACTIONS')[0])
     n_transactions = len(transactions)
     for i, item in enumerate(transactions):
         if i % 100 == 1:
@@ -111,11 +108,14 @@ def main(argv):
             memo = payees[payee_id]['name']
         else:
             memo = ''
+        date = item.attrib['postdate']
+        if to_use_beancount == False:
+            date = date.replace('-', '/')
         # Source account
         src = splits[0].attrib
         acnt_src_id = src['account']
         acnt_src_type = int(accounts[acnt_src_id]['type'])
-        acnt_src_name = traverse_account_hierarchy(accounts, acnt_src_id)
+        acnt_src_name = traverse_account_hierarchy(accounts, acnt_src_id, to_use_beancount)
         acnt_src_currency = accounts[acnt_src_id]['currency']
         src_amount = eval(src['price']) * eval(src['value'])
 
@@ -127,7 +127,7 @@ def main(argv):
             dst = splits[1].attrib
             acnt_dst_id = dst['account']
             acnt_dst_type = int(accounts[acnt_dst_id]['type'])
-            acnt_dst_name = traverse_account_hierarchy(accounts, acnt_dst_id)
+            acnt_dst_name = traverse_account_hierarchy(accounts, acnt_dst_id, to_use_beancount)
             acnt_dst_currency = accounts[acnt_dst_id]['currency']
             dst_amount = eval(dst['value']) / eval(dst['price'])
             if to_use_currency_symbols & (acnt_dst_currency in CurrencyDict.keys()):
@@ -147,7 +147,12 @@ def main(argv):
             #   account or an "expense category",
             # * source is a "money" account and destination is an "expense category" and the flag
             # "to_keep_destination_account_commodity" is set to false.
-            all_lines += "{} ({}) {}\n   {}  {} {:.4f}\n   {}  {} {:.4f}\n\n".format(date, trans_id, memo,
+            if to_use_beancount == True:
+                all_lines += "{} {} \"{}\"\n   {}  {:.4f} {}\n   {}  {:.4f} {}\n\n".format(date, "*", memo.replace('"', '\''),
+                          acnt_src_name, src_amount, acnt_src_currency,
+                          acnt_dst_name, -src_amount, acnt_src_currency)
+            else:
+                all_lines += "{} ({}) {}\n   {}  {} {:.4f}\n   {}  {}  {:.4f}\n\n".format(date, trans_id, memo,
                           acnt_src_name, acnt_src_currency, src_amount,
                           acnt_dst_name, acnt_src_currency, -src_amount)
         else:
@@ -156,12 +161,83 @@ def main(argv):
             #   argument in the flag "to_keep_destination_account_commodity" to do so,
             # * some amount of a foreign currency is bought, so conversion is necessary, since both source and
             #   destination accounts are "money" accounts (inverse of cond_1).
-            all_lines += "{} ({}) {}\n   {}  {} {:.4f} @@ {} {:.4f}\n   {}  {} {:.4f}\n\n".format(date, trans_id, memo,
+            if to_use_beancount == True:
+                all_lines += "{} {} \"{}\"\n   {}  {:.4f} {} @@ {:.4f} {}\n   {}  {:.4f} {} \n\n".format(date, "*", memo.replace('"', '\''),
+                        acnt_src_name, src_amount, acnt_src_currency, abs(dst_amount), acnt_dst_currency,
+                        acnt_dst_name, dst_amount, acnt_dst_currency)
+            else:
+                all_lines += "{} ({}) {}\n   {}  {} {:.4f} @@ {} {:.4f}\n   {}  {} {:.4f}\n\n".format(date, trans_id, memo,
                         acnt_src_name, acnt_src_currency, src_amount, acnt_dst_currency, abs(dst_amount),
                         acnt_dst_name, acnt_dst_currency, dst_amount)
+    return all_lines
 
+
+def main(argv):
+    try:
+        opts, args = getopt.getopt(argv[1:], "hbrso:",
+                                   ["help", "replace-destination-account-commodity", "beancount", "use-currency-symbols", "output="])
+    except getopt.GetoptError:
+        print_help()
+        sys.exit(2)
+
+    # Default flags
+    to_keep_destination_account_commodity = True
+    to_use_currency_symbols = False
+    to_use_beancount = False
+
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):
+            print_help()
+            sys.exit()
+        elif opt in ("-b", "--beancount"):
+            to_use_beancount = True
+        elif opt in ("-r", "--replace-destination-account-commodity"):
+            to_keep_destination_account_commodity = False
+        elif opt in ("-s", "--use-currency-symbols"):
+            to_use_currency_symbols = True
+        elif opt in ("-o", "--output"):
+            outputfile = arg
+
+    if len(args) == 1:
+        inputfile = args[0]
+
+    if not ("outputfile" in vars()):
+        outputfile = "{}.journal".format(inputfile)
+
+    # ============== PARSING XML ================
+    parser = ET.XMLParser(encoding="utf-8")
+    tree = ET.parse(inputfile, parser=parser)
+    root = tree.getroot()
+
+    # ============== OPERATING CURRENCY =========
+    if to_use_beancount == True:
+        header = print_operating_currency(root)
+    else:
+        header = ""
+
+    # ============== ACCOUNTS ===================
+    accounts = dict()
+    for k in list(root.findall("./ACCOUNTS")[0]):
+        accounts[k.attrib['id']] = k.attrib
+
+    if to_use_beancount == True:
+        account_lines = print_account_info(accounts, to_use_beancount)
+    else:
+        account_lines = ""
+
+    # ============== PAYEES =====================
+    payees = dict()
+    for k in list(root.findall("./PAYEES")[0]):
+        payees[k.attrib['id']] = k.attrib
+
+    # ============== TRANSACTIONS ===============
+    transactions = list(root.findall('./TRANSACTIONS')[0])
+    txn_lines = print_transactions(transactions, payees, accounts, to_keep_destination_account_commodity,
+                                   to_use_beancount, to_use_currency_symbols)
+
+    # ============== OUTPUT =====================
     out_file_id = open(outputfile, "w")
-    out_file_id.writelines(all_lines)
+    out_file_id.writelines(header + account_lines + txn_lines)
     out_file_id.close()
     return
 
