@@ -90,28 +90,29 @@ def main(argv):
     root = tree.getroot()
 
     accounts = dict()
-    for k in list(root.iter('ACCOUNTS'))[0]:
+    for k in list(root.findall("./ACCOUNTS")[0]):
         accounts[k.attrib['id']] = k.attrib
 
     payees = dict()
-    for k in list(root.iter('PAYEES'))[0]:
+    for k in list(root.findall("./PAYEES")[0]):
         payees[k.attrib['id']] = k.attrib
-
-    splits = list(list(root.iter('SPLITS')))
 
     # Process all transactions
     all_lines = ""
-    for i, item in enumerate(list(list(root.iter('TRANSACTIONS'))[0])):
-        date = item.attrib['postdate'].replace('-', '/')
+    transactions = list(root.findall('./TRANSACTIONS')[0])
+    n_transactions = len(transactions)
+    for i, item in enumerate(transactions):
+        if i % 100 == 1:
+            print("Processing transaction {}/{}".format(i, n_transactions))
         trans_id = item.attrib['id']
-
-        payee_id = splits[i][0].attrib['payee']
+        splits = list(item.findall('./SPLITS')[0])
+        payee_id = splits[0].attrib['payee']
         if payee_id != '':
             memo = payees[payee_id]['name']
         else:
             memo = ''
         # Source account
-        src = splits[i][0].attrib
+        src = splits[0].attrib
         acnt_src_id = src['account']
         acnt_src_type = int(accounts[acnt_src_id]['type'])
         acnt_src_name = traverse_account_hierarchy(accounts, acnt_src_id)
@@ -122,8 +123,8 @@ def main(argv):
             acnt_src_currency = CurrencyDict[acnt_src_currency]
 
         # Destination account
-        if len(list(splits[i])) == 2:
-            dst = splits[i][1].attrib
+        if len(list(splits)) == 2:
+            dst = splits[1].attrib
             acnt_dst_id = dst['account']
             acnt_dst_type = int(accounts[acnt_dst_id]['type'])
             acnt_dst_name = traverse_account_hierarchy(accounts, acnt_dst_id)
