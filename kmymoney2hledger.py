@@ -88,8 +88,12 @@ def traverse_account_hierarchy_forwards(root, parent, acnt, to_use_beancount):
         opening_date = acnt.attrib["opened"]
         if opening_date == "":
             opening_date = "1900-01-01"
+        closing_date = ""
+        if len(acnt.findall("./KEYVALUEPAIRS/PAIR/[@key='mm-closed']")) != 0:
+            closing_date = acnt.attrib["lastmodified"]
         if to_use_beancount == False:
             opening_date = opening_date.replace('-', '/')
+            closing_date = closing_date.replace('-', '/')
         subaccounts = acnt.findall("./SUBACCOUNTS/SUBACCOUNT")
     elif acnt.tag == "KMYMONEY-FILE":
         acnt_name = ""
@@ -99,7 +103,9 @@ def traverse_account_hierarchy_forwards(root, parent, acnt, to_use_beancount):
         account_lines = ""
         new_parent = "{}".format(acnt_name)
     elif parent != "":
-        account_lines = "{} open {}:{}\n".format(opening_date, parent, acnt_name)
+        account_lines = "{} open  {}:{}\n".format(opening_date, parent, acnt_name)
+        if closing_date != "":
+            account_lines += "{} close {}:{}\n".format(closing_date, parent, acnt_name)
         new_parent = "{}:{}".format(parent, acnt_name)
     else:
         account_lines = ""
@@ -272,7 +278,7 @@ def main(argv):
 
     # ============== OUTPUT =====================
     out_file_id = open(outputfile, "w")
-    out_file_id.writelines(header + account_lines + txn_lines)
+    out_file_id.writelines(header + "\n" + account_lines + "\n" + txn_lines)
     out_file_id.close()
     return
 
