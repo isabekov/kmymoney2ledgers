@@ -60,14 +60,14 @@ def remove_spec_chars(text):
         return ntxt
 
 
-def traverse_account_hierarchy(accounts, acnt_id, to_use_beancount):
+def traverse_account_hierarchy_backwards(accounts, acnt_id, to_use_beancount):
     if accounts[acnt_id]['parentaccount'] == "":
         acnt_name = accounts[acnt_id]['name']
         if acnt_name in AccountRenaming.keys():
             acnt_name = AccountRenaming[acnt_name]
         return acnt_name
     else:
-        parent_acnt_name = traverse_account_hierarchy(accounts, accounts[acnt_id]['parentaccount'], to_use_beancount)
+        parent_acnt_name = traverse_account_hierarchy_backwards(accounts, accounts[acnt_id]['parentaccount'], to_use_beancount)
     if to_use_beancount == True:
         acnt_name = remove_spec_chars(accounts[acnt_id]['name'])
     else:
@@ -75,17 +75,49 @@ def traverse_account_hierarchy(accounts, acnt_id, to_use_beancount):
     return "{}:{}".format(parent_acnt_name, acnt_name)
 
 
-def print_account_info(accounts, to_use_beancount):
-    account_lines = ''
-    for k in accounts.keys():
-        if not (accounts[k]['name'] in list(AccountRenaming.keys()) + ["Equity", "Income"]):
-            opening_date = accounts[k]["opened"]
-            if opening_date == "":
-                opening_date = "1900-01-01"
-            if to_use_beancount == False:
-                opening_date = opening_date.replace('-', '/')
-            acnt_full_name = traverse_account_hierarchy(accounts, k, to_use_beancount)
-            account_lines += "{} open {} \n".format(opening_date, acnt_full_name)
+def traverse_account_hierarchy_forwards(root, parent, acnt, to_use_beancount):
+    if acnt.tag == "ACCOUNT":
+        if to_use_beancount == True:
+            if (acnt.attrib['name'] in list(AccountRenaming.keys())):
+                acnt_name = AccountRenaming[acnt.attrib['name']]
+            else:
+                acnt_name = acnt.attrib['name']
+            acnt_name = remove_spec_chars(acnt_name)
+        else:
+            acnt_name = acnt.attrib['name']
+        opening_date = acnt.attrib["opened"]
+        if opening_date == "":
+            opening_date = "1900-01-01"
+        if to_use_beancount == False:
+            opening_date = opening_date.replace('-', '/')
+        subaccounts = acnt.findall("./SUBACCOUNTS/SUBACCOUNT")
+    elif acnt.tag == "KMYMONEY-FILE":
+        acnt_name = ""
+        subaccounts = acnt.findall("./ACCOUNTS/ACCOUNT/[@parentaccount='']")
+
+    if (parent == "") and (acnt.tag == "ACCOUNT"):
+        account_lines = ""
+        new_parent = "{}".format(acnt_name)
+    elif parent != "":
+        account_lines = "{} open {}:{}\n".format(opening_date, parent, acnt_name)
+        new_parent = "{}:{}".format(parent, acnt_name)
+    else:
+        account_lines = ""
+        new_parent = "{}".format(acnt_name)
+
+    if len(subaccounts) != 0:
+        for subacnt_id in list(subaccounts):
+            if subacnt_id.tag == "SUBACCOUNT":
+                subacnt = root.findall("./ACCOUNTS/ACCOUNT/[@id='{}']".format(subacnt_id.attrib['id']))[0]
+            else:
+                subacnt = subacnt_id
+            subacnt_lines = traverse_account_hierarchy_forwards(root, new_parent, subacnt, to_use_beancount)
+            account_lines += subacnt_lines
+    return  account_lines
+
+
+def print_account_info(root, to_use_beancount):
+    account_lines = traverse_account_hierarchy_forwards(root, '', root, to_use_beancount)
     return account_lines
 
 
@@ -115,7 +147,7 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
         src = splits[0].attrib
         acnt_src_id = src['account']
         acnt_src_type = int(accounts[acnt_src_id]['type'])
-        acnt_src_name = traverse_account_hierarchy(accounts, acnt_src_id, to_use_beancount)
+        acnt_src_name = traverse_account_hierarchy_backwards(accounts, acnt_src_id, to_use_beancount)
         acnt_src_currency = accounts[acnt_src_id]['currency']
         src_amount = eval(src['price']) * eval(src['value'])
 
@@ -127,7 +159,7 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
             dst = splits[1].attrib
             acnt_dst_id = dst['account']
             acnt_dst_type = int(accounts[acnt_dst_id]['type'])
-            acnt_dst_name = traverse_account_hierarchy(accounts, acnt_dst_id, to_use_beancount)
+            acnt_dst_name = traverse_account_hierarchy_backwards(accounts, acnt_dst_id, to_use_beancount)
             acnt_dst_currency = accounts[acnt_dst_id]['currency']
             dst_amount = eval(dst['value']) / eval(dst['price'])
             if to_use_currency_symbols & (acnt_dst_currency in CurrencyDict.keys()):
@@ -221,7 +253,7 @@ def main(argv):
         accounts[k.attrib['id']] = k.attrib
 
     if to_use_beancount == True:
-        account_lines = print_account_info(accounts, to_use_beancount)
+        account_lines = print_account_info(root, to_use_beancount)
     else:
         account_lines = ""
 
