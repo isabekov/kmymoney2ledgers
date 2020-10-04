@@ -8,7 +8,8 @@ journal format. Multiple transaction splits *are not supported yet*.
     cat [inputfile].kmy | gunzip > [inputfile].xml
     python kmymoney2hledger.py [inputfile].xml
 
-then output is written into [inputfile].xml.journal, or:
+then output is written into file [inputfile].xml.journal or [inputfile].xml.beancount. The output file name can be
+specified using "-o" option:
 
     python kmymoney2hledger.py [-o outputfile] [inputfile].xml
 

@@ -234,7 +234,10 @@ def main(argv):
         inputfile = args[0]
 
     if not ("outputfile" in vars()):
-        outputfile = "{}.journal".format(inputfile)
+        if to_use_beancount == True:
+            outputfile = "{}.beancount".format(inputfile)
+        else:
+            outputfile = "{}.journal".format(inputfile)
 
     # ============== PARSING XML ================
     parser = ET.XMLParser(encoding="utf-8")
