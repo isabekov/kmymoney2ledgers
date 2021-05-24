@@ -252,7 +252,9 @@ def main(argv):
 
     # ============== OPERATING CURRENCY =========
     if to_use_beancount == True:
-        header = print_operating_currency(root)
+        header = 'option "title" "Personal Finances"\n'
+        header += print_operating_currency(root)
+        header += 'plugin "beancount.plugins.implicit_prices"\n'
     else:
         header = ""
 
