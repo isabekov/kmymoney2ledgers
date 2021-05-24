@@ -155,7 +155,7 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
         acnt_src_type = int(accounts[acnt_src_id]['type'])
         acnt_src_name = traverse_account_hierarchy_backwards(accounts, acnt_src_id, to_use_beancount)
         acnt_src_currency = accounts[acnt_src_id]['currency']
-        src_amount = eval(src['price']) * eval(src['value'])
+        src_amount = eval(src['price']) * eval(src['shares'])
 
         if to_use_currency_symbols & (acnt_src_currency in CurrencyDict.keys()):
             acnt_src_currency = CurrencyDict[acnt_src_currency]
@@ -167,7 +167,7 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
             acnt_dst_type = int(accounts[acnt_dst_id]['type'])
             acnt_dst_name = traverse_account_hierarchy_backwards(accounts, acnt_dst_id, to_use_beancount)
             acnt_dst_currency = accounts[acnt_dst_id]['currency']
-            dst_amount = eval(dst['value']) / eval(dst['price'])
+            dst_amount = eval(dst['shares'])
             if to_use_currency_symbols & (acnt_dst_currency in CurrencyDict.keys()):
                 acnt_dst_currency = CurrencyDict[acnt_dst_currency]
         else:
