@@ -132,6 +132,16 @@ def print_operating_currency(root):
     return "option \"operating_currency\" \"{}\"\n".format(base_currency)
 
 
+def print_currency_prices(root):
+    price_lines = '\n'
+    for k in root.findall("./PRICES/PRICEPAIR"):
+        if k.attrib["from"] != k.attrib["to"]:
+            price_lines += f'\n;==== {k.attrib["from"]} to {k.attrib["to"]} =====\n'
+            for m in k:
+                price_lines += f'{m.attrib["date"]} price {k.attrib["from"]} {eval(m.attrib["price"])} {k.attrib["to"]} ; source: {m.attrib["source"]}\n'
+    return  price_lines
+
+
 def print_transactions(transactions, payees, accounts, to_keep_destination_account_commodity, to_use_beancount, to_use_currency_symbols):
     # Process all transactions
     all_lines = ""
@@ -141,11 +151,6 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
             print("Processing transaction {}/{}".format(i, n_transactions))
         trans_id = item.attrib['id']
         splits = list(item.findall('./SPLITS')[0])
-        payee_id = splits[0].attrib['payee']
-        if payee_id != '':
-            memo = payees[payee_id]['name']
-        else:
-            memo = ''
         date = item.attrib['postdate']
         if to_use_beancount == False:
             date = date.replace('-', '/')
@@ -156,6 +161,13 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
         acnt_src_name = traverse_account_hierarchy_backwards(accounts, acnt_src_id, to_use_beancount)
         acnt_src_currency = accounts[acnt_src_id]['currency']
         src_amount = eval(src['price']) * eval(src['shares'])
+        payee_id = src['payee']
+        if payee_id != '':
+            memo = payees[payee_id]['name']
+        elif acnt_src_type == AccountTypes["Equity"]:
+            memo = accounts[acnt_src_id]['name']
+        else:
+            memo = ''
 
         if to_use_currency_symbols & (acnt_src_currency in CurrencyDict.keys()):
             acnt_src_currency = CurrencyDict[acnt_src_currency]
@@ -170,6 +182,8 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
             dst_amount = eval(dst['shares'])
             if to_use_currency_symbols & (acnt_dst_currency in CurrencyDict.keys()):
                 acnt_dst_currency = CurrencyDict[acnt_dst_currency]
+            if (memo == '') and (acnt_dst_type == AccountTypes["Equity"]):
+                memo = accounts[acnt_dst_id]['name']
         else:
             print('No destination for source:')
             print("{} ({}) {}\n   {}  {} {:.4f}\n\n".format(date, trans_id, memo,
@@ -278,9 +292,12 @@ def main(argv):
     txn_lines = print_transactions(transactions, payees, accounts, to_keep_destination_account_commodity,
                                    to_use_beancount, to_use_currency_symbols)
 
+    # ============== PRICES =====================
+    price_lines = print_currency_prices(root)
+
     # ============== OUTPUT =====================
     out_file_id = open(outputfile, "w")
-    out_file_id.writelines(header + "\n" + account_lines + "\n" + txn_lines)
+    out_file_id.writelines(header + "\n" + account_lines + "\n" + txn_lines + "\n" + price_lines)
     out_file_id.close()
     return
 
