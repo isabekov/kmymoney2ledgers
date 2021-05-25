@@ -103,9 +103,9 @@ def traverse_account_hierarchy_forwards(root, parent, acnt, to_use_beancount):
         account_lines = ""
         new_parent = f"{acnt_name}"
     elif parent != "":
-        account_lines = f"{opening_date} open  {parent}:{acnt_name}\n"
+        account_lines = f"{opening_date} open  {parent}:{acnt_name}  ; {acnt.attrib['id']}\n"
         if closing_date != "":
-            account_lines += f"{closing_date} close {parent}:{acnt_name}\n"
+            account_lines += f"{closing_date} close {parent}:{acnt_name}  ; {acnt.attrib['id']}\n"
         new_parent = f"{parent}:{acnt_name}"
     else:
         account_lines = ""
@@ -124,7 +124,7 @@ def traverse_account_hierarchy_forwards(root, parent, acnt, to_use_beancount):
 
 def print_account_info(root, to_use_beancount):
     account_lines = traverse_account_hierarchy_forwards(root, '', root, to_use_beancount)
-    return account_lines
+    return "; Accounts\n" + account_lines
 
 
 def print_operating_currency(root):
@@ -133,7 +133,7 @@ def print_operating_currency(root):
 
 
 def print_currency_prices(root):
-    price_lines = '\n'
+    price_lines = '; Currency prices'
     for k in root.findall("./PRICES/PRICEPAIR"):
         if k.attrib["from"] != k.attrib["to"]:
             price_lines += f'\n;==== {k.attrib["from"]} to {k.attrib["to"]} =====\n'
@@ -191,6 +191,7 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
 
         cond_1 = acnt_src_currency == acnt_dst_currency
         cond_2 = (not cond_1) & (not to_keep_destination_account_commodity) & (acnt_src_type in money_accounts) & (acnt_dst_type in categories)
+        all_lines += f"; {trans_id}\n"
         if cond_1 or cond_2:
             # Destination account currency is replaced with source account currency and the destination amount
             # is set to the negated source amount when:
@@ -200,11 +201,11 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
             # "to_keep_destination_account_commodity" is set to false.
             if to_use_beancount == True:
                 memo = memo.replace('"', '\'')
-                all_lines += f'{date} * "{memo}"\n' \
+                all_lines += f'{date} * "{memo}" ; {payee_id}\n' \
                              f'   {acnt_src_name}  {src_amount:.4f} {acnt_src_currency}\n' \
                              f'   {acnt_dst_name}  {-src_amount:.4f} {acnt_src_currency}\n\n'
             else:
-                all_lines += f'{date} ({trans_id}) {memo}\n' \
+                all_lines += f'{date} ({trans_id}) {memo} ; {payee_id}\n' \
                              f'   {acnt_dst_name}  {acnt_src_currency} {src_amount:.4f}\n' \
                              f'   {acnt_dst_name}  {acnt_src_currency}  {-src_amount:.4f}\n\n'
         else:
@@ -215,14 +216,14 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
             #   destination accounts are "money" accounts (inverse of cond_1).
             if to_use_beancount == True:
                 memo =  memo.replace('"', '\'')
-                all_lines += f'{date} * "{memo}"\n' \
+                all_lines += f'{date} * "{memo}" ; {payee_id}\n' \
                              f'   {acnt_src_name}  {src_amount:.4f} {acnt_src_currency} @@ {abs(dst_amount):.4f} {acnt_dst_currency}\n' \
                              f'   {acnt_dst_name}  {dst_amount:.4f} {acnt_dst_currency} \n\n'
             else:
-                all_lines += f'{date} ({trans_id}) {memo}\n   ' \
+                all_lines += f'{date} ({trans_id}) {memo} ; {payee_id}\n   ' \
                              f'{acnt_src_name}  {acnt_src_currency} {src_amount:.4f} @@ {acnt_dst_currency} {abs(dst_amount):.4f}\n' \
                              f'   {acnt_dst_name}  {acnt_dst_currency} {dst_amount:.4f}\n\n'
-    return all_lines
+    return "; Transactions\n" + all_lines
 
 
 def main(argv):
