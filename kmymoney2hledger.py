@@ -40,7 +40,7 @@ categories = [AccountTypes[k] for k in ['Income', 'Expense']]
 AccountRenaming = {"Asset": "Assets", "Liability": "Liabilities", "Expense": "Expenses"}
 
 def print_help():
-    print("python3 {} [-o <outputfile>] <inputfile>\n".format(sys.argv[0]))
+    print(f"python3 {sys.argv[0]} [-o <outputfile>] <inputfile>\n")
     print('Input flags:\n\
     -b --beancount                                       use beancount output format (otherwise default is hledger)\n\
     -r --replace-destination-account-commodity           replace destination account commodity (currency) with source\n\
@@ -72,7 +72,7 @@ def traverse_account_hierarchy_backwards(accounts, acnt_id, to_use_beancount):
         acnt_name = remove_spec_chars(accounts[acnt_id]['name'])
     else:
         acnt_name = accounts[acnt_id]['name']
-    return "{}:{}".format(parent_acnt_name, acnt_name)
+    return f"{parent_acnt_name}:{acnt_name}"
 
 
 def traverse_account_hierarchy_forwards(root, parent, acnt, to_use_beancount):
@@ -101,20 +101,20 @@ def traverse_account_hierarchy_forwards(root, parent, acnt, to_use_beancount):
 
     if (parent == "") and (acnt.tag == "ACCOUNT"):
         account_lines = ""
-        new_parent = "{}".format(acnt_name)
+        new_parent = f"{acnt_name}"
     elif parent != "":
-        account_lines = "{} open  {}:{}\n".format(opening_date, parent, acnt_name)
+        account_lines = f"{opening_date} open  {parent}:{acnt_name}\n"
         if closing_date != "":
-            account_lines += "{} close {}:{}\n".format(closing_date, parent, acnt_name)
-        new_parent = "{}:{}".format(parent, acnt_name)
+            account_lines += f"{closing_date} close {parent}:{acnt_name}\n"
+        new_parent = f"{parent}:{acnt_name}"
     else:
         account_lines = ""
-        new_parent = "{}".format(acnt_name)
+        new_parent = f"{acnt_name}"
 
     if len(subaccounts) != 0:
         for subacnt_id in list(subaccounts):
             if subacnt_id.tag == "SUBACCOUNT":
-                subacnt = root.findall("./ACCOUNTS/ACCOUNT/[@id='{}']".format(subacnt_id.attrib['id']))[0]
+                subacnt = root.findall(f"./ACCOUNTS/ACCOUNT/[@id='{subacnt_id.attrib['id']}']")[0]
             else:
                 subacnt = subacnt_id
             subacnt_lines = traverse_account_hierarchy_forwards(root, new_parent, subacnt, to_use_beancount)
@@ -129,7 +129,7 @@ def print_account_info(root, to_use_beancount):
 
 def print_operating_currency(root):
     base_currency = root.findall("./KEYVALUEPAIRS/PAIR/[@key='kmm-baseCurrency']")[0].attrib['value']
-    return "option \"operating_currency\" \"{}\"\n".format(base_currency)
+    return f'option "operating_currency" "{base_currency}"\n'
 
 
 def print_currency_prices(root):
@@ -148,7 +148,7 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
     n_transactions = len(transactions)
     for i, item in enumerate(transactions):
         if i % 100 == 1:
-            print("Processing transaction {}/{}".format(i, n_transactions))
+            print(f"Processing transaction {i}/{n_transactions}")
         trans_id = item.attrib['id']
         splits = list(item.findall('./SPLITS')[0])
         date = item.attrib['postdate']
@@ -186,8 +186,7 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
                 memo = accounts[acnt_dst_id]['name']
         else:
             print('No destination for source:')
-            print("{} ({}) {}\n   {}  {} {:.4f}\n\n".format(date, trans_id, memo,
-                                                            acnt_src_name, acnt_src_currency, src_amount))
+            print(f'{date} ({trans_id}) {memo}\n   {acnt_src_name}  {acnt_src_currency} {src_amount:.4f}\n\n')
             continue
 
         cond_1 = acnt_src_currency == acnt_dst_currency
@@ -200,13 +199,14 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
             # * source is a "money" account and destination is an "expense category" and the flag
             # "to_keep_destination_account_commodity" is set to false.
             if to_use_beancount == True:
-                all_lines += "{} {} \"{}\"\n   {}  {:.4f} {}\n   {}  {:.4f} {}\n\n".format(date, "*", memo.replace('"', '\''),
-                          acnt_src_name, src_amount, acnt_src_currency,
-                          acnt_dst_name, -src_amount, acnt_src_currency)
+                memo = memo.replace('"', '\'')
+                all_lines += f'{date} * "{memo}"\n' \
+                             f'   {acnt_src_name}  {src_amount:.4f} {acnt_src_currency}\n' \
+                             f'   {acnt_dst_name}  {-src_amount:.4f} {acnt_src_currency}\n\n'
             else:
-                all_lines += "{} ({}) {}\n   {}  {} {:.4f}\n   {}  {}  {:.4f}\n\n".format(date, trans_id, memo,
-                          acnt_src_name, acnt_src_currency, src_amount,
-                          acnt_dst_name, acnt_src_currency, -src_amount)
+                all_lines += f'{date} ({trans_id}) {memo}\n' \
+                             f'   {acnt_dst_name}  {acnt_src_currency} {src_amount:.4f}\n' \
+                             f'   {acnt_dst_name}  {acnt_src_currency}  {-src_amount:.4f}\n\n'
         else:
             # Keep the destination account currency as it is specified in the KMyMoney transaction when:
             # * source is a "money" account and destination is an "expense category" and it was specified in the input
@@ -214,13 +214,14 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
             # * some amount of a foreign currency is bought, so conversion is necessary, since both source and
             #   destination accounts are "money" accounts (inverse of cond_1).
             if to_use_beancount == True:
-                all_lines += "{} {} \"{}\"\n   {}  {:.4f} {} @@ {:.4f} {}\n   {}  {:.4f} {} \n\n".format(date, "*", memo.replace('"', '\''),
-                        acnt_src_name, src_amount, acnt_src_currency, abs(dst_amount), acnt_dst_currency,
-                        acnt_dst_name, dst_amount, acnt_dst_currency)
+                memo =  memo.replace('"', '\'')
+                all_lines += f'{date} * "{memo}"\n' \
+                             f'   {acnt_src_name}  {src_amount:.4f} {acnt_src_currency} @@ {abs(dst_amount):.4f} {acnt_dst_currency}\n' \
+                             f'   {acnt_dst_name}  {dst_amount:.4f} {acnt_dst_currency} \n\n'
             else:
-                all_lines += "{} ({}) {}\n   {}  {} {:.4f} @@ {} {:.4f}\n   {}  {} {:.4f}\n\n".format(date, trans_id, memo,
-                        acnt_src_name, acnt_src_currency, src_amount, acnt_dst_currency, abs(dst_amount),
-                        acnt_dst_name, acnt_dst_currency, dst_amount)
+                all_lines += f'{date} ({trans_id}) {memo}\n   ' \
+                             f'{acnt_src_name}  {acnt_src_currency} {src_amount:.4f} @@ {acnt_dst_currency} {abs(dst_amount):.4f}\n' \
+                             f'   {acnt_dst_name}  {acnt_dst_currency} {dst_amount:.4f}\n\n'
     return all_lines
 
 
@@ -255,9 +256,9 @@ def main(argv):
 
     if not ("outputfile" in vars()):
         if to_use_beancount == True:
-            outputfile = "{}.beancount".format(inputfile)
+            outputfile = f"{inputfile}.beancount"
         else:
-            outputfile = "{}.journal".format(inputfile)
+            outputfile = f"{inputfile}.journal"
 
     # ============== PARSING XML ================
     parser = ET.XMLParser(encoding="utf-8")
