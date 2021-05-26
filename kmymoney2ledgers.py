@@ -1,5 +1,5 @@
 #! /usr/bin/python3
-# KMyMoney's XML to hledger's journal file converter
+# KMyMoney's XML to hledger/beancount's journal file converter
 # License: GPL v3.0
 # Author: Altynbek Isabekov
 

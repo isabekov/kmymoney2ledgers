@@ -6,16 +6,16 @@ journal format. Multiple transaction splits *are not supported yet*.
 ## Use
 
     cat [inputfile].kmy | gunzip > [inputfile].xml
-    python kmymoney2hledger.py [inputfile].xml
+    python kmymoney2ledgers.py [inputfile].xml
 
 then output is written into file [inputfile].xml.journal or [inputfile].xml.beancount. The output file name can be
 specified using "-o" option:
 
-    python kmymoney2hledger.py [-o outputfile] [inputfile].xml
+    python kmymoney2ledgers.py [-o outputfile] [inputfile].xml
 
 Help:
 
-    python3 kmymoney2hledger.py [-o <outputfile>] <inputfile>
+    python3 kmymoney2ledgers.py [-o <outputfile>] <inputfile>
 
     Input flags:
         -b --beancount                                       use beancount output format (otherwise default is hledger)
@@ -60,20 +60,20 @@ Help:
  a larger amount of US Dollars should be bought using the money in the base currency (EUR, replaced by €).
 
     cat Finances.kmy | gunzip > Finances.xml
-    python3 kmymoney2hledger.py -r -s Finances.xml
+    python3 kmymoney2ledgers.py -r -s Finances.xml
     hledger -f Finances.xml.journal balance --flat -Y -b 2019 --change --depth 2 --invert -X € --infer-value Income Expense
 
  Perform the same operation, but do not convert foreign currency expenses into the base currency. The food expenses in
  this case will be shown separately in EUR and USD.
 
     cat Finances.kmy | gunzip > Finances.xml
-    python3 kmymoney2hledger.py -r -s Finances.xml
+    python3 kmymoney2ledgers.py -r -s Finances.xml
     hledger -f Finances.xml.journal balance --flat -Y -b 2019 --change --depth 2 Income Expense
 
  Beancount example with fava frontend:
 
     pip install fava
     cat Finances.kmy | gunzip > Finances.xml
-    python3 kmymoney2hledger.py -br -o Finances.beancount Finances.xml
+    python3 kmymoney2ledgers.py -br -o Finances.beancount Finances.xml
     fava Finances.beancount
     # In internet browser open http://localhost:5000
