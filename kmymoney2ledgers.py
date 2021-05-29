@@ -143,6 +143,8 @@ def print_currency_prices(root):
 
 
 def print_transactions(transactions, payees, accounts, to_keep_destination_account_commodity, to_use_beancount, to_use_currency_symbols):
+    for k in accounts.keys():
+        accounts[k]["fullname"] = traverse_account_hierarchy_backwards(accounts, k, to_use_beancount)
     # Process all transactions
     all_lines = ""
     n_transactions = len(transactions)
@@ -158,7 +160,7 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
         src = splits[0].attrib
         acnt_src_id = src['account']
         acnt_src_type = int(accounts[acnt_src_id]['type'])
-        acnt_src_name = traverse_account_hierarchy_backwards(accounts, acnt_src_id, to_use_beancount)
+        acnt_src_name = accounts[acnt_src_id]["fullname"]
         acnt_src_currency = accounts[acnt_src_id]['currency']
         src_amount = eval(src['price']) * eval(src['shares'])
         payee_id = src['payee']
@@ -177,7 +179,7 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
             dst = splits[1].attrib
             acnt_dst_id = dst['account']
             acnt_dst_type = int(accounts[acnt_dst_id]['type'])
-            acnt_dst_name = traverse_account_hierarchy_backwards(accounts, acnt_dst_id, to_use_beancount)
+            acnt_dst_name = accounts[acnt_dst_id]["fullname"]
             acnt_dst_currency = accounts[acnt_dst_id]['currency']
             dst_amount = eval(dst['shares'])
             if to_use_currency_symbols & (acnt_dst_currency in CurrencyDict.keys()):
