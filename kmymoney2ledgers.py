@@ -68,7 +68,7 @@ def traverse_account_hierarchy_backwards(accounts, acnt_id, to_use_beancount):
         return acnt_name
     else:
         parent_acnt_name = traverse_account_hierarchy_backwards(accounts, accounts[acnt_id]['parentaccount'], to_use_beancount)
-    if to_use_beancount == True:
+    if to_use_beancount:
         acnt_name = remove_spec_chars(accounts[acnt_id]['name'])
     else:
         acnt_name = accounts[acnt_id]['name']
@@ -77,7 +77,7 @@ def traverse_account_hierarchy_backwards(accounts, acnt_id, to_use_beancount):
 
 def traverse_account_hierarchy_forwards(root, parent, acnt, to_use_beancount):
     if acnt.tag == "ACCOUNT":
-        if to_use_beancount == True:
+        if to_use_beancount:
             if (acnt.attrib['name'] in list(AccountRenaming.keys())):
                 acnt_name = AccountRenaming[acnt.attrib['name']]
             else:
@@ -91,7 +91,7 @@ def traverse_account_hierarchy_forwards(root, parent, acnt, to_use_beancount):
         closing_date = ""
         if len(acnt.findall("./KEYVALUEPAIRS/PAIR/[@key='mm-closed']")) != 0:
             closing_date = acnt.attrib["lastmodified"]
-        if to_use_beancount == False:
+        if not to_use_beancount:
             opening_date = opening_date.replace('-', '/')
             closing_date = closing_date.replace('-', '/')
         subaccounts = acnt.findall("./SUBACCOUNTS/SUBACCOUNT")
@@ -152,12 +152,12 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
     all_lines = ""
     n_transactions = len(transactions)
     for i, item in enumerate(transactions):
-        if i % 100 == 1:
-            print(f"Processing transaction {i}/{n_transactions}")
+        if (i % 100 == 1) or (i == n_transactions-1):
+            print(f"Processing transaction {i+1}/{n_transactions}")
         trans_id = item.attrib['id']
         splits = list(item.findall('./SPLITS')[0])
         date = item.attrib['postdate']
-        if to_use_beancount == False:
+        if not to_use_beancount:
             date = date.replace('-', '/')
         txn_commodity = item.attrib["commodity"]
 
@@ -204,10 +204,7 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
                 # * some amount of a foreign currency is bought, so conversion is necessary, since both source and
                 #   destination accounts are "money" accounts (inverse of cond_1).
                 all_lines += f'   {acnt_name}  {shares:.4f} {acnt_currency} @@ {abs(value):.4f} {txn_commodity}'
-            if memo == '':
-                all_lines += f'\n'
-            else:
-                all_lines += f'   ; {memo}\n'
+            all_lines += f'\n' if memo == '' else f'   ; {memo}\n'
         all_lines += "\n"
     return "; Transactions\n" + all_lines
 
@@ -253,7 +250,7 @@ def main(argv):
     root = tree.getroot()
 
     # ============== OPERATING CURRENCY =========
-    if to_use_beancount == True:
+    if to_use_beancount:
         header = 'option "title" "Personal Finances"\n'
         header += print_operating_currency(root)
         header += 'plugin "beancount.plugins.implicit_prices"\n'
@@ -264,11 +261,7 @@ def main(argv):
     accounts = dict()
     for k in list(root.findall("./ACCOUNTS")[0]):
         accounts[k.attrib['id']] = k.attrib
-
-    if to_use_beancount == True:
-        account_lines = print_account_info(root, to_use_beancount)
-    else:
-        account_lines = ""
+    account_lines = print_account_info(root, to_use_beancount) if to_use_beancount else ''
 
     # ============== PAYEES =====================
     payees = dict()
