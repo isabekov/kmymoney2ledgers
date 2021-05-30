@@ -1,7 +1,7 @@
 # KMyMoney's XML to hledger/beancount journal file converter
 
 This script converts transactions listed in a KMyMoney's XML file to transactions printed in the hledger/beancount's
-journal format. Multiple transaction splits *are not supported yet*.
+journal format. Multiple transaction splits *are also supported*.
 
 ## Use
 
