@@ -132,13 +132,16 @@ def print_operating_currency(root):
     return f'option "operating_currency" "{base_currency}"\n'
 
 
-def print_currency_prices(root):
+def print_currency_prices(root, to_use_beancount):
     price_lines = '; Currency prices'
     for k in root.findall("./PRICES/PRICEPAIR"):
         if k.attrib["from"] != k.attrib["to"]:
             price_lines += f'\n;==== {k.attrib["from"]} to {k.attrib["to"]} =====\n'
             for m in k:
-                price_lines += f'{m.attrib["date"]} price {k.attrib["from"]} {eval(m.attrib["price"])} {k.attrib["to"]} ; source: {m.attrib["source"]}\n'
+                if to_use_beancount:
+                    price_lines += f'{m.attrib["date"]} price {k.attrib["from"]} {eval(m.attrib["price"])} {k.attrib["to"]} ; source: {m.attrib["source"]}\n'
+                else:
+                    price_lines += f'P {m.attrib["date"].replace("-", "/")} {k.attrib["from"]} {eval(m.attrib["price"])} {k.attrib["to"]} ; source: {m.attrib["source"]}\n'
     return  price_lines
 
 
@@ -278,7 +281,7 @@ def main(argv):
                                    to_use_beancount, to_use_currency_symbols)
 
     # ============== PRICES =====================
-    price_lines = print_currency_prices(root)
+    price_lines = print_currency_prices(root, to_use_beancount)
 
     # ============== OUTPUT =====================
     out_file_id = open(outputfile, "w")
