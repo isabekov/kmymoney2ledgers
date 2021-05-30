@@ -168,14 +168,10 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
             payee = accounts[acnt_id]['name']
         else:
             payee = ''
-
+        payee = payee.replace('"', '\'') if to_use_beancount else payee
         # Transaction header
         all_lines += f"; {trans_id}\n"
-        if to_use_beancount:
-            payee = payee.replace('"', '\'')
-            all_lines += f'{date} * "{payee}" ; {payee_id}\n'
-        else:
-            all_lines += f'{date} ({trans_id}) {payee} ; {payee_id}\n'
+        all_lines += f'{date} * "{payee}" ; {payee_id}\n'
 
         for spl in splits:
             acnt_id = spl.attrib['account']
@@ -185,9 +181,9 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
             value = eval(spl.attrib['value'])
             shares = eval(spl.attrib['shares'])
             memo = spl.attrib['memo']
+            memo = memo.replace('"', '\'') if to_use_beancount else memo
             if to_use_currency_symbols & (acnt_currency in CurrencyDict.keys()):
                 acnt_currency = CurrencyDict[acnt_currency]
-
             cond_1 = txn_commodity == acnt_currency
             cond_2 = (not cond_1) & (not to_keep_destination_account_commodity) & (acnt_type in categories)
             if cond_1 or cond_2:
@@ -197,22 +193,14 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
                 #   account or an "expense category",
                 # * source is a "money" account and destination is an "expense category" and the flag
                 # "to_keep_destination_account_commodity" is set to false.
-                if to_use_beancount == True:
-                    memo = memo.replace('"', '\'')
-                    all_lines += f'   {acnt_name}  {value:.4f} {txn_commodity}'
-                else:
-                    all_lines += f'   {acnt_name}  {txn_commodity} {value:.4f}'
+                all_lines += f'   {acnt_name}  {value:.4f} {txn_commodity}'
             else:
                 # Keep the destination account currency as it is specified in the KMyMoney transaction when:
                 # * source is a "money" account and destination is an "expense category" and it was specified in the input
                 #   argument in the flag "to_keep_destination_account_commodity" to do so,
                 # * some amount of a foreign currency is bought, so conversion is necessary, since both source and
                 #   destination accounts are "money" accounts (inverse of cond_1).
-                if to_use_beancount == True:
-                    memo =  memo.replace('"', '\'')
-                    all_lines += f'   {acnt_name}  {shares:.4f} {acnt_currency} @@ {abs(value):.4f} {txn_commodity}'
-                else:
-                    all_lines += f'   {acnt_name}  {acnt_currency} {shares:.4f} @@ {txn_commodity} {abs(value):.4f}'
+                all_lines += f'   {acnt_name}  {shares:.4f} {acnt_currency} @@ {abs(value):.4f} {txn_commodity}'
             if memo == '':
                 all_lines += f'\n'
             else:
