@@ -139,9 +139,9 @@ def print_currency_prices(root, to_use_beancount):
             price_lines += f'\n;==== {k.attrib["from"]} to {k.attrib["to"]} =====\n'
             for m in k:
                 if to_use_beancount:
-                    price_lines += f'{m.attrib["date"]} price {k.attrib["from"]} {eval(m.attrib["price"])} {k.attrib["to"]} ; source: {m.attrib["source"]}\n'
+                    price_lines += f'{m.attrib["date"]} price {k.attrib["from"]} {eval(m.attrib["price"]):.4f} {k.attrib["to"]} ; source: {m.attrib["source"]}\n'
                 else:
-                    price_lines += f'P {m.attrib["date"].replace("-", "/")} {k.attrib["from"]} {eval(m.attrib["price"])} {k.attrib["to"]} ; source: {m.attrib["source"]}\n'
+                    price_lines += f'P {m.attrib["date"].replace("-", "/")} {k.attrib["from"]} {eval(m.attrib["price"]):.4f} {k.attrib["to"]} ; source: {m.attrib["source"]}\n'
     return  price_lines
 
 
