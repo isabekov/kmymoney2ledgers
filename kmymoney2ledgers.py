@@ -185,6 +185,7 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
             shares = eval(spl.attrib['shares'])
             memo = spl.attrib['memo']
             memo = memo.replace('"', '\'') if to_use_beancount else memo
+            memo = memo.replace("\n", "\\n")
             if to_use_currency_symbols & (acnt_currency in CurrencyDict.keys()):
                 acnt_currency = CurrencyDict[acnt_currency]
             cond_1 = txn_commodity == acnt_currency
