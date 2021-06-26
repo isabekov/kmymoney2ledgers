@@ -145,7 +145,8 @@ def print_currency_prices(root, to_use_beancount):
     return  price_lines
 
 
-def print_transactions(transactions, payees, accounts, to_keep_destination_account_commodity, to_use_beancount, to_use_currency_symbols):
+def print_transactions(transactions, payees, accounts, tags_dict, to_keep_destination_account_commodity,
+                       to_use_beancount, to_use_currency_symbols):
     for k in accounts.keys():
         accounts[k]["fullname"] = traverse_account_hierarchy_backwards(accounts, k, to_use_beancount)
     # Process all transactions
@@ -172,9 +173,20 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
         else:
             payee = ''
         payee = payee.replace('"', '\'') if to_use_beancount else payee
+
         # Transaction header
         all_lines += f"; {trans_id}\n"
         all_lines += f'{date} * "{payee}" ; {payee_id}\n'
+
+        # Tags
+        txn_tags = splits[0].findall('./TAG')
+        if len(txn_tags) >= 1:
+            tags = ' ; '
+            for k in txn_tags:
+                tags += f"{tags_dict[k.attrib['id']]}:, "
+            tags = tags[:-1]
+        else:
+            tags = ''
 
         for spl in splits:
             acnt_id = spl.attrib['account']
@@ -186,6 +198,13 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
             memo = spl.attrib['memo']
             memo = memo.replace('"', '\'') if to_use_beancount else memo
             memo = memo.replace("\n", "\\n")
+
+            # Tags
+            if acnt_type == AccountTypes["Expense"]:
+                tags_expense = tags
+            else:
+                tags_expense = ''
+
             if to_use_currency_symbols & (acnt_currency in CurrencyDict.keys()):
                 acnt_currency = CurrencyDict[acnt_currency]
             cond_1 = txn_commodity == acnt_currency
@@ -197,14 +216,14 @@ def print_transactions(transactions, payees, accounts, to_keep_destination_accou
                 #   account or an "expense category",
                 # * source is a "money" account and destination is an "expense category" and the flag
                 # "to_keep_destination_account_commodity" is set to false.
-                all_lines += f'   {acnt_name}  {value:.4f} {txn_commodity}'
+                all_lines += f'   {acnt_name}  {value:.4f} {txn_commodity}{tags_expense}'
             else:
                 # Keep the destination account currency as it is specified in the KMyMoney transaction when:
                 # * source is a "money" account and destination is an "expense category" and it was specified in the input
                 #   argument in the flag "to_keep_destination_account_commodity" to do so,
                 # * some amount of a foreign currency is bought, so conversion is necessary, since both source and
                 #   destination accounts are "money" accounts (inverse of cond_1).
-                all_lines += f'   {acnt_name}  {shares:.4f} {acnt_currency} @@ {abs(value):.4f} {txn_commodity}'
+                all_lines += f'   {acnt_name}  {shares:.4f} {acnt_currency} @@ {abs(value):.4f} {txn_commodity}{tags_expense}'
             all_lines += f'\n' if memo == '' else f'   ; {memo}\n'
         all_lines += "\n"
     return "; Transactions\n" + all_lines
@@ -269,9 +288,14 @@ def main(argv):
     for k in list(root.findall("./PAYEES")[0]):
         payees[k.attrib['id']] = k.attrib
 
+    # =============== TAGS ======================
+    tags = dict()
+    for k in root.findall("./TAGS/TAG"):
+        tags[k.attrib['id']] = k.attrib["name"]
+
     # ============== TRANSACTIONS ===============
     transactions = list(root.findall('./TRANSACTIONS')[0])
-    txn_lines = print_transactions(transactions, payees, accounts, to_keep_destination_account_commodity,
+    txn_lines = print_transactions(transactions, payees, accounts, tags, to_keep_destination_account_commodity,
                                    to_use_beancount, to_use_currency_symbols)
 
     # ============== PRICES =====================
