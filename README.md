@@ -3,6 +3,14 @@
 This script converts transactions listed in a KMyMoney's XML file to transactions printed in the hledger/beancount's
 journal format. Multiple transaction splits *are also supported*.
 
+Read the article ["Structure of a KMyMoney XML File"](https://www.isabekov.pro/structure-of-a-kmymoney-xml-file/) to
+better understand the multicurrency problem in KMyMoney and how to solve it using this tool paired with hledger/beancount.
+
+Basically, KMyMoney may stay as a user-friendly GUI application for recording transactions.
+Auto-completion for payees, ability to easily change the account hierarchy and move transactions from one account
+to another are the advantages of KMyMoney. However, generation of multiperiod reports should be done by *hledger*, simply because
+it allows multicurrency categories ("expenses" and "income") and can handle currency conversion better than KMyMoney.
+
 ## Use
 
     cat [inputfile].kmy | gunzip > [inputfile].xml
@@ -76,4 +84,4 @@ Help:
     cat Finances.kmy | gunzip > Finances.xml
     python3 kmymoney2ledgers.py -br -o Finances.beancount Finances.xml
     fava Finances.beancount
-    # In internet browser open http://localhost:5000
+    # In internet browser, open http://localhost:5000
