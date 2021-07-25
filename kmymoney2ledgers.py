@@ -136,13 +136,28 @@ def print_currency_prices(root, to_use_beancount):
     price_lines = '; Currency prices'
     for k in root.findall("./PRICES/PRICEPAIR"):
         if k.attrib["from"] != k.attrib["to"]:
-            price_lines += f'\n;==== {k.attrib["from"]} to {k.attrib["to"]} =====\n'
+            if k.attrib["from"] in CurrencyDict.keys():
+                cmdty_from = CurrencyDict[k.attrib["from"]]
+            else:
+                cmdty_from = k.attrib["from"]
+
+            if k.attrib["to"] in CurrencyDict.keys():
+                cmdty_to = CurrencyDict[k.attrib["to"]]
+            else:
+                cmdty_to = k.attrib["to"]
+            price_lines += f'\n;==== {cmdty_from} to {cmdty_to} =====\n'
             for m in k:
                 if to_use_beancount:
-                    price_lines += f'{m.attrib["date"]} price {k.attrib["from"]} {eval(m.attrib["price"]):.4f} {k.attrib["to"]} ; source: {m.attrib["source"]}\n'
+                    price_lines += f'{m.attrib["date"]} price {cmdty_from} {eval(m.attrib["price"]):.4f} {cmdty_to} ; source: {m.attrib["source"]}\n'
                 else:
-                    price_lines += f'P {m.attrib["date"].replace("-", "/")} {k.attrib["from"]} {eval(m.attrib["price"]):.4f} {k.attrib["to"]} ; source: {m.attrib["source"]}\n'
+                    price_lines += f'P {m.attrib["date"].replace("-", "/")} {cmdty_from} {eval(m.attrib["price"]):.4f} {cmdty_to} ; source: {m.attrib["source"]}\n'
     return  price_lines
+
+
+def use_currency_symbol_if_exists(currency):
+    if currency in CurrencyDict.keys():
+        currency = CurrencyDict[currency]
+    return currency
 
 
 def print_transactions(transactions, payees, accounts, tags_dict, to_keep_destination_account_commodity,
@@ -206,7 +221,8 @@ def print_transactions(transactions, payees, accounts, tags_dict, to_keep_destin
                 tags_expense = ''
 
             if to_use_currency_symbols & (acnt_currency in CurrencyDict.keys()):
-                acnt_currency = CurrencyDict[acnt_currency]
+                acnt_currency = use_currency_symbol_if_exists(acnt_currency)
+                txn_commodity = use_currency_symbol_if_exists(txn_commodity)
             cond_1 = txn_commodity == acnt_currency
             cond_2 = (not cond_1) & (not to_keep_destination_account_commodity) & (acnt_type in categories)
             if cond_1 or cond_2:
