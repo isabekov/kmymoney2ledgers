@@ -241,7 +241,7 @@ def print_transactions(
     for i, item in enumerate(transactions):
         if (i % 100 == 1) or (i == n_transactions - 1):
             print(f"Processing transaction {i+1}/{n_transactions}")
-        trans_id = item.attrib["id"]
+        txn_id = item.attrib["id"]
         splits = list(item.findall("./SPLITS")[0])
         date = item.attrib["postdate"]
         if not to_use_beancount:
@@ -261,7 +261,7 @@ def print_transactions(
         payee = payee.replace('"', "'") if to_use_beancount else payee
 
         # Transaction header
-        all_lines += f"; {trans_id}\n"
+        all_lines += f"; {txn_id}\n"
         all_lines += f'{date} * "{payee}" ; {payee_id}\n'
 
         # Tags
