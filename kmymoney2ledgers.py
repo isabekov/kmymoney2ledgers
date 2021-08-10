@@ -260,19 +260,22 @@ def print_transactions(
             payee = ""
         payee = payee.replace('"', "'") if to_use_beancount else payee
 
+        # Tags at transaction level
+        if len(splits) == 2:
+            txn_tags = splits[0].findall("./TAG")
+            if len(txn_tags) >= 1:
+                tags = " ; "
+                for k in txn_tags:
+                    tags += f"{tags_dict[k.attrib['id']]}:, "
+                tags = tags[:-1]
+            else:
+                tags = ""
+        else:
+            tags = "" # There can be tags at split (posting) level though
+
         # Transaction header
         all_lines += f"; {txn_id}\n"
-        all_lines += f'{date} * "{payee}" ; {payee_id}\n'
-
-        # Tags
-        txn_tags = splits[0].findall("./TAG")
-        if len(txn_tags) >= 1:
-            tags = " ; "
-            for k in txn_tags:
-                tags += f"{tags_dict[k.attrib['id']]}:, "
-            tags = tags[:-1]
-        else:
-            tags = ""
+        all_lines += f'{date} * "{payee}" ; {payee_id}; {tags}\n'
 
         for spl in splits:
             acnt_id = spl.attrib["account"]
@@ -285,15 +288,20 @@ def print_transactions(
             memo = memo.replace('"', "'") if to_use_beancount else memo
             memo = memo.replace("\n", "\\n")
 
-            # Tags
-            if acnt_type == AccountTypes["Expense"]:
-                tags_expense = tags
+            # Tags at split (posting) level
+            spl_tags = spl.findall("./TAG")
+            if len(spl_tags) >= 1:
+                tags = " ; "
+                for k in spl_tags:
+                    tags += f"{tags_dict[k.attrib['id']]}:, "
+                tags = tags[:-2]
             else:
-                tags_expense = ""
+                tags = ""
 
             if to_use_currency_symbols & (acnt_currency in CurrencyDict.keys()):
                 acnt_currency = use_currency_symbol_if_exists(acnt_currency)
                 txn_commodity = use_currency_symbol_if_exists(txn_commodity)
+
             cond_1 = txn_commodity == acnt_currency
             cond_2 = (
                 (not cond_1)
@@ -308,7 +316,7 @@ def print_transactions(
                 # * source is a "money" account and destination is an "expense category" and the flag
                 # "to_keep_destination_account_commodity" is set to false.
                 all_lines += (
-                    f"   {acnt_name}  {value:.4f} {txn_commodity}{tags_expense}"
+                    f"   {acnt_name}  {value:.4f} {txn_commodity}{tags}"
                 )
             else:
                 # Keep the destination account currency as it is specified in the KMyMoney transaction when:
@@ -318,7 +326,7 @@ def print_transactions(
                 #   destination accounts are "money" accounts (inverse of cond_1).
                 all_lines += (
                     f"   {acnt_name}  {shares:.4f} {acnt_currency} @@ {abs(value):.4f}"
-                    f" {txn_commodity}{tags_expense}"
+                    f" {txn_commodity}{tags}"
                 )
             all_lines += f"\n" if memo == "" else f"   ; {memo}\n"
         all_lines += "\n"
