@@ -184,16 +184,16 @@ def print_operating_currency(root):
     return f'option "operating_currency" "{base_currency}"\n'
 
 
-def print_currency_prices(root, to_use_beancount):
+def print_currency_prices(root, to_use_beancount, to_use_currency_symbols):
     price_lines = "; Currency prices"
     for k in root.findall("./PRICES/PRICEPAIR"):
         if k.attrib["from"] != k.attrib["to"]:
-            if k.attrib["from"] in CurrencyDict.keys():
+            if to_use_currency_symbols & (k.attrib["from"] in CurrencyDict.keys()):
                 cmdty_from = CurrencyDict[k.attrib["from"]]
             else:
                 cmdty_from = k.attrib["from"]
 
-            if k.attrib["to"] in CurrencyDict.keys():
+            if to_use_currency_symbols & (k.attrib["to"] in CurrencyDict.keys()):
                 cmdty_to = CurrencyDict[k.attrib["to"]]
             else:
                 cmdty_to = k.attrib["to"]
@@ -421,7 +421,7 @@ def main(argv):
     )
 
     # ============== PRICES =====================
-    price_lines = print_currency_prices(root, to_use_beancount)
+    price_lines = print_currency_prices(root, to_use_beancount, to_use_currency_symbols)
 
     # ============== OUTPUT =====================
     out_file_id = open(outputfile, "w")
