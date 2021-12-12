@@ -97,6 +97,8 @@ def traverse_account_hierarchy_backwards(accounts, acnt_id, to_use_beancount):
         acnt_name = accounts[acnt_id]["name"]
         if acnt_name in AccountRenaming.keys():
             acnt_name = AccountRenaming[acnt_name]
+        if to_use_beancount:
+            acnt_name = remove_spec_chars(acnt_name)
         return acnt_name
     else:
         parent_acnt_name = traverse_account_hierarchy_backwards(
@@ -143,7 +145,7 @@ def traverse_account_hierarchy_forwards(root, parent, acnt, to_use_beancount):
         new_parent = f"{acnt_name}"
     elif parent != "":
         account_lines = (
-            f"{opening_date} open  {parent}:{acnt_name}  ; {acnt.attrib['id']}\n"
+            f"{opening_date} open {parent}:{acnt_name}  ; {acnt.attrib['id']}\n"
         )
         if closing_date != "":
             account_lines += (
@@ -239,7 +241,7 @@ def print_transactions(
     all_lines = ""
     n_transactions = len(transactions)
     for i, item in enumerate(transactions):
-        if (i % 100 == 1) or (i == n_transactions - 1):
+        if (i % 1000 == 1) or (i == n_transactions - 1):
             print(f"Processing transaction {i+1}/{n_transactions}")
         txn_id = item.attrib["id"]
         splits = list(item.findall("./SPLITS")[0])
