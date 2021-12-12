@@ -1,7 +1,7 @@
 # KMyMoney's XML to hledger/beancount journal file converter
 
 This script converts transactions listed in a KMyMoney's XML file to transactions printed in the hledger/beancount's
-journal format. Multiple transaction splits *are also supported*.
+journal format. Multiple transaction splits *are also supported*. A faster Awk implementation can be found here: [kmymoney2ledgers.awk](https://github.com/isabekov/kmymoney2ledgers.awk).
 
 Read the article ["Structure of a KMyMoney XML File"](https://www.isabekov.pro/structure-of-a-kmymoney-xml-file/) to
 better understand the multicurrency problem in KMyMoney and how to solve it using this tool paired with hledger/beancount.
@@ -10,6 +10,12 @@ Basically, KMyMoney may stay as a user-friendly GUI application for recording tr
 Auto-completion for payees, ability to easily change the account hierarchy and move transactions from one account
 to another are the advantages of KMyMoney. However, generation of multiperiod reports should be done by *hledger*, simply because
 it allows multicurrency categories ("expenses" and "income") and can handle currency conversion better than KMyMoney.
+
+Supported features:
+- printing account opening information for beancount,
+- conversion of transactions for hledger/beancount,
+- printing currency conversion prices for hledger/beancount,
+- tags at split level for hledger.
 
 ## Use
 
@@ -41,9 +47,9 @@ Help:
  This tool solves a problem of preparing financial reports in KMyMoney when multiple currencies are used (expenses in vacations, moving to another country).
  KMyMoney does not support multicurrency expense categories. The currency of an expense category is specified during the category's creation.
 
- Scenarios:
+ Scenarios for handling multicurrency expense categories:
  1) All expense categories are opened in the base currency during the KMyMoney file creation.
-    Default behavior since people usually spend money in the base currency.
+    It is a default behavior since people usually spend money in the base currency.
  2) Some or all expense categories are duplicated in other currencies.
     This has to be done manually for every expense category, e.g. "public transport" category has to be
     created in USD, EUR etc. and named properly using suffixes in the names. The problem with this approach is
@@ -55,12 +61,12 @@ Help:
  the transaction amount in the base currency for the destination account (expense category).
  KMyMoney will always ask about the conversion rate between foreign and base currency.
 
+ With this tool, **one can stop worrying about the currency of the expense category and ignore conversion rate**,
+ since this information will not be used when "-r" flag is specified. Basically, one would always want to use "-r" flag while converting a KMyMoney file to ledger.
+
  Scenario 2 is impractical, since expenses are spread among different currencies and cannot be summed up.
 
- With this tool one can stop worrying about the currency of the expense category and ignore conversion rate,
- since this information will not be used when "-r" flag is specified.
-
- ## Multicurrency example:
+## Multicurrency example:
 
  Summarize yearly income and expenses by categories at depth level 2 starting with year 2019 by converting all earnings/spendings
  in different foreign currencies into Euros where the exchange rate is inferred from the purchase of foreign currencies in
