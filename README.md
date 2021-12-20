@@ -1,7 +1,9 @@
 # KMyMoney's XML to hledger/beancount journal file converter
 
 This script converts transactions listed in a KMyMoney's XML file to transactions printed in the hledger/beancount's
-journal format. Multiple transaction splits *are also supported*. A faster Awk implementation can be found here: [kmymoney2ledgers.awk](https://github.com/isabekov/kmymoney2ledgers.awk).
+journal format. Multiple transaction splits *are also supported*.
+
+A faster Awk implementation can be found here: [kmymoney2ledgers.awk](https://github.com/isabekov/kmymoney2ledgers.awk). It can process 30000 transactions in 4.8 seconds.
 
 Read the article ["Structure of a KMyMoney XML File"](https://www.isabekov.pro/structure-of-a-kmymoney-xml-file/) to
 better understand the multicurrency problem in KMyMoney and how to solve it using this tool paired with hledger/beancount.
